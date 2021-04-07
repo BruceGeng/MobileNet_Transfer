@@ -12,16 +12,14 @@ from MobileV3 import mobilenet_v3_large
 train_dir = "/apdvqacephfs/share_774517/data/videoqa/fufankui_data/fufankui_train_data_v6"
 val_dir = "/apdvqacephfs/share_774517/data/videoqa/subtype_data/video_val_data_multi"
 test_dir = "/apdvqacephfs/share_774517/data/videoqa/horror/data11/fafachen/lowquality/discomfort_detect/video_test_data"
+num_classes = 18
 workers = 20
 batch_size = 256
-num_classes = 18
+epochs = 50
 
 def main():
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print("using {} device.".format(device))
-
-    batch_size = 16
-    epochs = 5
 
     data_transform = {
         "train": transforms.Compose([transforms.Resize((256, 256)),
@@ -29,7 +27,7 @@ def main():
                                      transforms.RandomHorizontalFlip(),
                                      transforms.ToTensor(),
                                      transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]),
-        "val": transforms.Compose([transforms.Resize((224,224)),
+        "val": transforms.Compose([transforms.Resize((224, 224)),
                                    transforms.ToTensor(),
                                    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])}
 
@@ -74,7 +72,7 @@ def main():
     optimizer = optim.Adam(params, lr=0.0001)
 
     best_acc = 0.0
-    save_path = './MobileNetV3.pth'
+    save_path = './Transfered_MobileNetV3.pth'
     train_steps = len(train_loader)
     for epoch in range(epochs):
         # train
@@ -95,28 +93,28 @@ def main():
             train_bar.desc = "train epoch[{}/{}] loss:{:.3f}".format(epoch + 1,
                                                                      epochs,
                                                                      loss)
-
         # validate
-        net.eval()
-        acc = 0.0  # accumulate accurate number / epoch
-        with torch.no_grad():
-            val_bar = tqdm(val_loader)
-            for val_data in val_bar:
-                val_images, val_labels = val_data
-                outputs = net(val_images.to(device))
-                # loss = loss_function(outputs, test_labels)
-                predict_y = torch.max(outputs, dim=1)[1]
-                acc += torch.eq(predict_y, val_labels.to(device)).sum().item()
+        if epoch % 10 == 0 or epoch == epochs - 1:
+            net.eval()
+            acc = 0.0  # accumulate accurate number / epoch
+            with torch.no_grad():
+                val_bar = tqdm(val_loader)
+                for val_data in val_bar:
+                    val_images, val_labels = val_data
+                    outputs = net(val_images.to(device))
+                    # loss = loss_function(outputs, test_labels)
+                    predict_y = torch.max(outputs, dim=1)[1]
+                    acc += torch.eq(predict_y, val_labels.to(device)).sum().item()
 
-                val_bar.desc = "valid epoch[{}/{}]".format(epoch + 1,
-                                                           epochs)
-        val_accurate = acc / val_num
-        print('[epoch %d] train_loss: %.3f  val_accuracy: %.3f' %
-              (epoch + 1, running_loss / train_steps, val_accurate))
+                    val_bar.desc = "valid epoch[{}/{}]".format(epoch + 1,
+                                                               epochs)
+            val_accurate = acc / val_num
+            print('[epoch %d] train_loss: %.3f  val_accuracy: %.3f' %
+                  (epoch + 1, running_loss / train_steps, val_accurate))
 
-        if val_accurate > best_acc:
-            best_acc = val_accurate
-            torch.save(net.state_dict(), save_path)
+            if val_accurate > best_acc:
+                best_acc = val_accurate
+                torch.save(net.state_dict(), save_path)
 
     print('Finished Training')
 
