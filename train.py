@@ -8,13 +8,15 @@ from torchvision import transforms, datasets
 from tqdm import tqdm
 
 from MobileV3 import mobilenet_v3_large
+from GhostNet import ghostnet
 
+model_name = 'ghostnet' # 'mobilenet'
 train_dir = "/apdvqacephfs/share_774517/data/videoqa/fufankui_data/fufankui_train_data_v6"
 val_dir = "/apdvqacephfs/share_774517/data/videoqa/subtype_data/video_val_data_multi"
 test_dir = "/apdvqacephfs/share_774517/data/videoqa/horror/data11/fafachen/lowquality/discomfort_detect/video_test_data"
 num_classes = 18
 workers = 20
-batch_size = 256
+batch_size = 64
 epochs = 50
 
 def main():
@@ -45,12 +47,18 @@ def main():
 
     print("using {} images for training, {} images for validation.".format(train_num,val_num))
 
-    # create model
-    net = mobilenet_v3_large(num_classes = num_classes)
+    print("You chose {} model!".format(model_name))
+    if model_name == 'mobilenet':
+        # create model
+        net = mobilenet_v3_large(num_classes = num_classes)
+        model_weight_path = "./mobilenet_v3_large.pth"
+    elif model_name == 'ghostnet':
+        net = ghostnet(num_classes = num_classes)
+        model_weight_path = "./ghostnet_dict.pth"
+    else:
+        print("You Must Chose A Model!!!")
 
     # load pretrain weights
-    # download url: https://download.pytorch.org/models/mobilenet_v2-b0353104.pth
-    model_weight_path = "./mobilenet_v3_large.pth"
     assert os.path.exists(model_weight_path), "file {} dose not exist.".format(model_weight_path)
     pre_weights = torch.load(model_weight_path, map_location=device)
 
@@ -59,8 +67,14 @@ def main():
     missing_keys, unexpected_keys = net.load_state_dict(pre_dict, strict=False)
 
     # freeze features weights
-    for param in net.features.parameters():
-        param.requires_grad = False
+    if model_name == 'mobilenet':
+        for param in net.features.parameters():
+            param.requires_grad = False
+    elif model_name == 'ghostnet':
+        for param in net.blocks.parameters():
+            param.requires_grad = False
+    else:
+        print("You Must Chose A Model!!!")
 
     net.to(device)
 
@@ -72,7 +86,13 @@ def main():
     optimizer = optim.Adam(params, lr=0.0001)
 
     best_acc = 0.0
-    save_path = './Transfered_MobileNetV3.pth'
+    if model_name == 'mobilenet':
+        save_path = './Transfered_MobileNetV3.pth'
+    elif model_name == 'ghostnet':
+        save_path = './Transfered_GhostNet.pth'
+    else:
+        print("You Must Chose A Model!!!")
+
     train_steps = len(train_loader)
     for epoch in range(epochs):
         # train

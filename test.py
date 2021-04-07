@@ -13,7 +13,7 @@ result_file_path = './res.csv'
 test_dir = "/apdvqacephfs/share_774517/data/videoqa/horror/data11/fafachen/lowquality/discomfort_detect/video_test_data"
 num_classes = 18
 workers = 20
-batch_size = 256
+batch_size = 64
 epochs = 50
 
 
@@ -50,6 +50,9 @@ def main():
             predict = torch.nn.Softmax(dim=1)(predict)
             for i in predict:
                 predicts.append(i)
+            if len(predicts) % 10000 == 0:
+                print("already tested {}/{} images.".format(len(predicts), test_num))
+
         print("Writing in csv file......")
         # Write rowkey and score in csv file
         with open(result_file_path, "w", newline='') as w:
