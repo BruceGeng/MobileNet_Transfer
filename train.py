@@ -11,13 +11,15 @@ from MobileV3 import mobilenet_v3_large
 from GhostNet import ghostnet
 
 model_name = 'ghostnet' # 'mobilenet'
-train_dir = "/apdvqacephfs/share_774517/data/videoqa/fufankui_data/fufankui_train_data_v6"
-val_dir = "/apdvqacephfs/share_774517/data/videoqa/subtype_data/video_val_data_multi"
-test_dir = "/apdvqacephfs/share_774517/data/videoqa/horror/data11/fafachen/lowquality/discomfort_detect/video_test_data"
+save_dir = "/apdcephfs/share_774517/shared_info/brucegeng/transfer_learning"
+weight_dir = "/apdcephfs/share_774517/shared_info/brucegeng/pretrained_model"
+train_dir = "/apdcephfs/share_774517/data/videoqa/fufankui_data/fufankui_train_data_v6"
+val_dir = "/apdcephfs/share_774517/data/videoqa/subtype_data/video_val_data_multi"
 num_classes = 18
 workers = 20
-batch_size = 64
+batch_size = 256
 epochs = 50
+
 
 def main():
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -47,14 +49,15 @@ def main():
 
     print("using {} images for training, {} images for validation.".format(train_num,val_num))
 
-    print("You chose {} model!".format(model_name))
     if model_name == 'mobilenet':
         # create model
         net = mobilenet_v3_large(num_classes = num_classes)
-        model_weight_path = "./mobilenet_v3_large.pth"
+        model_weight_path = os.path.join(weight_dir, "mobilenet_v3_large.pth")
+        print("You chose mobilenet model!")
     elif model_name == 'ghostnet':
         net = ghostnet(num_classes = num_classes)
-        model_weight_path = "./ghostnet_dict.pth"
+        model_weight_path = os.path.join(weight_dir, "ghostnet_dict.pth")
+        print("You chose ghostnet model!")
     else:
         print("You Must Chose A Model!!!")
 
@@ -74,7 +77,7 @@ def main():
         for param in net.blocks.parameters():
             param.requires_grad = False
     else:
-        print("You Must Chose A Model!!!")
+        print("You Must Choose A Model!!!")
 
     net.to(device)
 
@@ -87,11 +90,11 @@ def main():
 
     best_acc = 0.0
     if model_name == 'mobilenet':
-        save_path = './Transfered_MobileNetV3.pth'
+        save_path = os.path.join(save_dir, 'Transfered_MobileNetV3.pth')
     elif model_name == 'ghostnet':
-        save_path = './Transfered_GhostNet.pth'
+        save_path = os.path.join(save_dir, 'Transfered_GhostNet.pth')
     else:
-        print("You Must Chose A Model!!!")
+        print("You Must Choose A Model!!!")
 
     train_steps = len(train_loader)
     for epoch in range(epochs):
